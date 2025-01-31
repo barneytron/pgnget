@@ -3,40 +3,10 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"mime"
 	"net/http"
-	"os"
 )
-
-type Copyable interface {
-	Copy(dst io.Writer, src io.Reader) (written int64, err error)
-}
-
-type Copier struct{}
-
-func NewCopier() Copyable {
-	return &Copier{}
-}
-
-func (copier Copier) Copy(dst io.Writer, src io.Reader) (written int64, err error) {
-	return io.Copy(dst, src)
-}
-
-type Creatable interface {
-	Create(name string) (*os.File, error)
-}
-
-type Creator struct{}
-
-func NewCreator() Creatable {
-	return &Creator{}
-}
-
-func (creator Creator) Create(name string) (*os.File, error) {
-	return os.Create(name)
-}
 
 type HttpClient interface {
 	Get(url string) (resp *http.Response, err error)
@@ -68,13 +38,13 @@ func (c ChessComClient) DownloadPgn(url string) error {
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return err
+		return err // TODO: wrap error
 	}
 
 	contentDisposition := resp.Header.Get("Content-Disposition")
 	disposition, params, err := mime.ParseMediaType(contentDisposition)
 	if err != nil {
-		return err
+		return err // TODO: wrap error
 	}
 
 	var filename string
@@ -85,18 +55,18 @@ func (c ChessComClient) DownloadPgn(url string) error {
 
 	out, err := c.fileCreator.Create(filename)
 	if err != nil {
-		return err
+		return err // TODO: wrap error
 	}
 	defer out.Close()
 
 	_, err = c.byteCopier.Copy(out, resp.Body)
 	if err != nil {
 		log.Printf("error occurred copying %s to file system", filename)
-		return err
+		return err // TODO: wrap error
 	}
 
 	log.Println("copied " + disposition + ": " + filename)
-	return nil
+	return nil // TODO: wrap error
 }
 
 func (c ChessComClient) GetAllMonthlyArchiveUrls(username string) ([]string, error) {
@@ -105,7 +75,7 @@ func (c ChessComClient) GetAllMonthlyArchiveUrls(username string) ([]string, err
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return nil, err // TODO: wrap error
 	}
 
 	var archives PgnArchives
@@ -113,7 +83,7 @@ func (c ChessComClient) GetAllMonthlyArchiveUrls(username string) ([]string, err
 	err = decoder.Decode(&archives)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(err) // TODO: wrap error
 		return nil, err
 	}
 

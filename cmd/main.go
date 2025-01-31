@@ -73,23 +73,16 @@ func main() {
 	fileCreator := client.NewCreator()
 
 	chessComClient := client.NewChessClient(&http.Client{}, byteCopier, fileCreator)
+	chessComPgnDownloader := client.NewChesscomPgnDownloader(*chessComClient)
 
+	var err error
 	if *year == zeroYear && *month == "all" {
-		monthlyUrls, err := chessComClient.GetAllMonthlyArchiveUrls(*username)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, monthlyUrl := range monthlyUrls {
-			u := fmt.Sprintf("%s%s", monthlyUrl, "/pgn")
-			chessComClient.DownloadPgn(u)
-		}
+		err = chessComPgnDownloader.DownloadAll(*username)
 	} else {
-		// https://api.chess.com/pub/player/erik/games/2009/10/pgn
-		url := "https://api.chess.com/pub/player/" + *username + "/games/" + *year + "/" + *month + "/pgn"
-		log.Println("downloading pgn: " + url)
-		err := chessComClient.DownloadPgn(url)
-		if err != nil {
-			log.Fatal(err)
-		}
+		url := chessComPgnDownloader.CreatePgnByMonthUrl(*username, *year, *month)
+		err = chessComPgnDownloader.DownloadByMonth(url)
+	}
+	if err != nil {
+		log.Fatal(err)
 	}
 }
