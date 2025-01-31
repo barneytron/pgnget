@@ -1,7 +1,7 @@
 package args_test
 
 import (
-	"pgnget/internal/args"
+	"github.com/barneytron/pgnget/internal/args"
 	"testing"
 )
 

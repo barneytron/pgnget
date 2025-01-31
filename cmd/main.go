@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"pgnget/internal/args"
-	"pgnget/internal/client"
+	"github.com/barneytron/pgnget/internal/args"
+	"github.com/barneytron/pgnget/internal/client"
 )
 
 const (
@@ -42,6 +42,10 @@ func validateArgs(username *string, month *string, year *string) {
 		printUsage()
 		os.Exit(1)
 	}
+
+    if *year == zeroYear && *month == zeroMonth && *username != "" {
+        return
+    }
 
 	if !args.IsMonthValid(*month) || !args.IsYearValid(*year) || !args.IsUsernameValid(*username) {
 		printUsage()
@@ -75,8 +79,8 @@ func main() {
 	chessComClient := client.NewChessClient(&http.Client{}, byteCopier, fileCreator)
 	chessComPgnDownloader := client.NewChesscomPgnDownloader(*chessComClient)
 
-	var err error
-	if *year == zeroYear && *month == "all" {
+	var err error    
+	if *year == zeroYear && *month == zeroMonth {
 		err = chessComPgnDownloader.DownloadAll(*username)
 	} else {
 		url := chessComPgnDownloader.CreatePgnByMonthUrl(*username, *year, *month)

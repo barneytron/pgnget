@@ -3,7 +3,10 @@ package client
 import (
 	"fmt"
 	"log"
+	"sync"
 )
+
+const WorkerCount = 4
 
 type Downloadable interface {
 	CreatePgnByMonthUrl(username string, year string, month string) string
@@ -35,15 +38,41 @@ func (d ChesscomPgnDownloader) DownloadByMonth(url string) error {
 	return nil
 }
 
+// TODO: deal with errors
+func (d ChesscomPgnDownloader) doWork(id int, urls <-chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for url := range urls {
+		url = fmt.Sprintf("%s/pgn", url)
+		log.Println("pool worker", id, "downloading from ", url)
+		d.chessComClient.DownloadPgn(url)
+	}
+}
+
 // TODO: use concurrency
 func (d ChesscomPgnDownloader) DownloadAll(username string) error {
 	monthlyUrls, err := d.chessComClient.GetAllMonthlyArchiveUrls(username)
 	if err != nil {
 		return err // TODO: wrap error here
 	}
-	for _, monthlyUrl := range monthlyUrls {
-		url := fmt.Sprintf("%s%s", monthlyUrl, "/pgn")
-		d.chessComClient.DownloadPgn(url)
+
+	//numWorkers := runtime.NumCPU()
+	numWorkers := WorkerCount
+	urls := make(chan string, numWorkers)
+	var wg sync.WaitGroup
+
+	// Create worker pool based on number of CPU cores
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go d.doWork(w, urls, &wg)
 	}
+
+	// Send jobs to the job channel
+	for _, monthlyUrl := range monthlyUrls {
+		urls <- monthlyUrl
+	}
+	close(urls)
+	// Wait for all workers to complete
+	wg.Wait()
+
 	return nil
 }

@@ -29,7 +29,8 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/", // Path to your Go project
             "env": {},
-            "args": ["--username=barneytron", "--year=2024", "--month=09"], // --username=user --year=2024 --month=09
+            // "args": ["--username=barneytron", "--year=2024", "--month=09"], // --username=user --year=2024 --month=09
+            "args": ["--username=barneytron"],
             "showLog": true
         }
     ]
