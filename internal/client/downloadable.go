@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -39,12 +40,15 @@ func (d ChesscomPgnDownloader) DownloadByMonth(url string) error {
 }
 
 // TODO: deal with errors
-func (d ChesscomPgnDownloader) doWork(id int, urls <-chan string, wg *sync.WaitGroup) {
+func (d ChesscomPgnDownloader) doWork(id int, urlsChan <-chan string, errorsChan chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
-	for url := range urls {
+	for url := range urlsChan {
 		url = fmt.Sprintf("%s/pgn", url)
 		log.Println("pool worker", id, "downloading from ", url)
-		d.chessComClient.DownloadPgn(url)
+		err := d.chessComClient.DownloadPgn(url)
+		if err != nil {
+			errorsChan <- errors.New(fmt.Sprintf("worker %d: error processing job %s", id, url))
+		}
 	}
 }
 
@@ -57,22 +61,27 @@ func (d ChesscomPgnDownloader) DownloadAll(username string) error {
 
 	//numWorkers := runtime.NumCPU()
 	numWorkers := WorkerCount
-	urls := make(chan string, numWorkers)
+	urlsChan := make(chan string, numWorkers)
+	errorChan := make(chan error, numWorkers)
 	var wg sync.WaitGroup
 
 	// Create worker pool based on number of CPU cores
+	wg.Add(numWorkers)
 	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go d.doWork(w, urls, &wg)
+		go d.doWork(w, urlsChan, errorChan, &wg)
 	}
 
-	// Send jobs to the job channel
+	// Send url to the urls channel
 	for _, monthlyUrl := range monthlyUrls {
-		urls <- monthlyUrl
+		urlsChan <- monthlyUrl
 	}
-	close(urls)
+	close(urlsChan)
+
 	// Wait for all workers to complete
 	wg.Wait()
-
+	close(errorChan)
+	for err := range errorChan {
+		fmt.Println("Error:", err)
+	}
 	return nil
 }
